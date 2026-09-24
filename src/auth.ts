@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { redirect } from "next/navigation";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -56,12 +57,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 export async function requireUser() {
   const session = await auth();
-  if (!session?.user) throw new Error("Oturum gerekli.");
+  if (!session?.user) redirect("/login");
   return session.user;
 }
 
 export async function requireTeacher() {
   const user = await requireUser();
-  if (user.role !== "TEACHER") throw new Error("Bu işlem için öğretmen yetkisi gerekli.");
+  if (user.role !== "TEACHER") redirect("/dashboard");
   return user;
 }

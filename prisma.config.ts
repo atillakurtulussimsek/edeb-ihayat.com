@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -8,6 +8,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // Build aşamasında (prisma generate) DB gerekmez; runtime'da gerçek değer zorunlu.
+    url: process.env.DATABASE_URL ?? "mysql://build:build@localhost:3306/build",
   },
 });
