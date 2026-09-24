@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+}
+
+enum LessonType {
+  INDIVIDUAL
+  GROUP
+}
+
+enum LessonStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model User {
+  id           String          @id @default(cuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         Role            @default(STUDENT)
+  phone        String?
+  note         String?         @db.Text
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  lessons      LessonStudent[]
+  attendances  LessonAttendance[]
+
+  /// Öğrenci ise bağlı olduğu öğretmen
+  teacherId    String?
+  teacher      User?           @relation("TeacherStudents", fields: [teacherId], references: [id], onDelete: SetNull)
+  students     User[]          @relation("TeacherStudents")
+  taughtLessons Lesson[]
+
+  @@index([teacherId])
+}
+
+model Lesson {
+  id          String          @id @default(cuid())
+  title       String
+  description String?         @db.Text
+  type        LessonType      @default(INDIVIDUAL)
+  status      LessonStatus    @default(SCHEDULED)
+  startsAt    DateTime
+  durationMin Int             @default(60)
+  meetingId   String          @unique @default(cuid())
+  attendeePw  String
+  moderatorPw String
+  teacherId   String
+  teacher     User            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  students    LessonStudent[]
+  attendances LessonAttendance[]
+  stats       LessonStats?
+
+  @@index([startsAt])
+  @@index([teacherId])
+}
+
+model LessonStudent {
+  lessonId  String
+  studentId String
+  lesson    Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime?
+
+  @@id([lessonId, studentId])
+}
+
+/// Ders sonrası özet istatistik (BBB analytics callback veya canlı yoklama ile toplanır).
+model LessonStats {
+  lessonId         String   @id
+  lesson           Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  source           String   @default("poll") // "poll" | "analytics"
+  startedAt        DateTime?
+  endedAt          DateTime?
+  durationSec      Int      @default(0)
+  participantCount Int      @default(0)
+  totalMessages    Int      @default(0)
+  totalTalkSec     Int      @default(0)
+  pollCount        Int      @default(0)
+  raw              Json?
+  updatedAt        DateTime @updatedAt
+}
+
+/// Katılımcı bazlı yoklama ve etkileşim.
+model LessonAttendance {
+  id             String    @id @default(cuid())
+  lessonId       String
+  lesson         Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  studentId      String?
+  student        User?     @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  externalUserId String
+  name           String
+  moderator      Boolean   @default(false)
+  joinedAt       DateTime
+  lastSeenAt     DateTime
+  leftAt         DateTime?
+  durationSec    Int       @default(0)
+  talkTimeSec    Int       @default(0)
+  webcamTimeSec  Int       @default(0)
+  messages       Int       @default(0)
+  raisedHands    Int       @default(0)
+  emojis         Int       @default(0)
+  pollVotes      Int       @default(0)
+
+  @@unique([lessonId, externalUserId])
+  @@index([studentId])
+}
