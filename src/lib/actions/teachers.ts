@@ -21,7 +21,7 @@ export async function createTeacher(formData: FormData): Promise<ActionResult> {
   const { name, email, phone, password } = parsed.data;
 
   if (await prisma.user.findUnique({ where: { email } })) return { ok: false, error: "Bu e-posta zaten kayıtlı." };
-  await prisma.user.create({ data: { name, email, phone, role: "TEACHER", passwordHash: await bcrypt.hash(password, 10) } });
+  await prisma.user.create({ data: { name, email, phone, role: "TEACHER", passwordHash: await bcrypt.hash(password, 10), mustChangePassword: true } });
   revalidatePath("/teachers");
   return { ok: true, message: "Öğretmen eklendi." };
 }
@@ -49,7 +49,7 @@ export async function updateMyProfile(formData: FormData): Promise<ActionResult>
   const { name, phone, password } = parsed.data;
   await prisma.user.update({
     where: { id: me.id },
-    data: { name, phone, ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}) },
+    data: { name, phone, ...(password ? { passwordHash: await bcrypt.hash(password, 10), mustChangePassword: false } : {}) },
   });
   revalidatePath("/teachers");
   return { ok: true, message: "Profil güncellendi." };

@@ -31,7 +31,7 @@ export async function createStudent(formData: FormData): Promise<ActionResult> {
 
   const plain = password || Math.random().toString(36).slice(-8);
   await prisma.user.create({
-    data: { name, email, phone, note, role: "STUDENT", teacherId: teacher.id, passwordHash: await bcrypt.hash(plain, 10) },
+    data: { name, email, phone, note, role: "STUDENT", teacherId: teacher.id, passwordHash: await bcrypt.hash(plain, 10), mustChangePassword: true },
   });
   revalidatePath("/students");
   return { ok: true, message: password ? "Öğrenci eklendi." : `Öğrenci eklendi. Geçici şifre: ${plain}` };
@@ -59,7 +59,7 @@ export async function updateStudent(id: string, formData: FormData): Promise<Act
       email,
       phone,
       note,
-      ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
+      ...(password ? { passwordHash: await bcrypt.hash(password, 10), mustChangePassword: true } : {}),
     },
   });
   revalidatePath("/students");
