@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/auth";
 import type { ActionResult } from "./students";
 
-export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const ALLOWED = /^(application\/pdf|application\/vnd\.(openxmlformats-officedocument|ms-|oasis)|application\/msword|application\/zip|text\/|image\/|audio\/|video\/)/;
 
 export async function uploadMaterials(lessonId: string, formData: FormData): Promise<ActionResult> {
