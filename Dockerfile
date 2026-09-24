@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM node:24-alpine AS base
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # ---- deps
@@ -17,6 +17,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate && npm run build
 
+# ---- migrate araçları (yalnız Prisma CLI + dotenv; schema engine dahil)
+FROM base AS migrator
+WORKDIR /migrate
+RUN npm init -y >/dev/null && npm install --no-audit --no-fund prisma@7.10.0 dotenv@18.0.3
+
 # ---- runner
 FROM base AS runner
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
@@ -26,13 +31,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Başlangıçta migration için Prisma CLI ve gerekli paketler
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+# Migration için Prisma CLI, standalone node_modules üzerine eklenir
+COPY --from=migrator --chown=nextjs:nodejs /migrate/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
