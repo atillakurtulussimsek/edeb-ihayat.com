@@ -12,6 +12,7 @@ import { JoinButton } from "@/components/lessons/join-button";
 import { StatusBadge, TypeBadge } from "@/components/lessons/status-badge";
 import { LessonActions } from "@/components/lessons/lesson-actions";
 import { LessonStatsPanel } from "@/components/lessons/lesson-stats";
+import { MaterialsPanel } from "@/components/lessons/materials-panel";
 import { buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -30,6 +31,7 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
       students: { include: { student: { select: { id: true, name: true, email: true } } } },
       stats: true,
       attendances: { orderBy: { joinedAt: "asc" } },
+      materials: { select: { id: true, name: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!lesson) notFound();
@@ -97,6 +99,8 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
               )}
             </section>
           )}
+
+          <MaterialsPanel lessonId={lesson.id} materials={lesson.materials} isTeacher={isTeacher} />
 
           {lesson.status === "ENDED" && (
             <LessonStatsPanel
