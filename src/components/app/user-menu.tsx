@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -48,10 +49,12 @@ export function UserMenu({ user, compact }: { user: { name: string; email: strin
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="text-sm font-medium">{user.name}</div>
-          <div className="text-xs text-muted-foreground">{user.email}</div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="text-sm font-medium">{user.name}</div>
+            <div className="text-xs text-muted-foreground">{user.email}</div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
           {resolvedTheme === "dark" ? <SunIcon /> : <MoonIcon />}
