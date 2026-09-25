@@ -21,6 +21,8 @@ export const dynamic = "force-dynamic";
 export default async function LessonDetailPage({ params, searchParams }: PageProps<"/lessons/[id]">) {
   const user = await requireUser();
   const isTeacher = user.role === "TEACHER";
+  const isAdmin = user.role === "ADMIN";
+  const isStaff = isTeacher || isAdmin;
   const { id } = await params;
   const sp = await searchParams;
   await syncLessonStatuses();
@@ -29,6 +31,7 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
     where: { id },
     include: {
       students: { include: { student: { select: { id: true, name: true, email: true } } } },
+      teacher: { select: { name: true, email: true } },
       stats: true,
       attendances: { orderBy: { joinedAt: "asc" } },
       materials: { select: { id: true, name: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "desc" } },
@@ -42,7 +45,7 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
     lesson.status === "LIVE" ? getMeetingInfo(lesson.meetingId) : Promise.resolve(null),
     lesson.status === "ENDED" ? getRecordings([lesson.meetingId]).catch(() => [] as Recording[]) : Promise.resolve([] as Recording[]),
   ]);
-  const joinable = lesson.status === "SCHEDULED" || lesson.status === "LIVE";
+  const joinable = isAdmin ? lesson.status === "LIVE" : lesson.status === "SCHEDULED" || lesson.status === "LIVE";
   const errorMsg = typeof sp.error === "string" ? sp.error : null;
 
   return (
@@ -52,11 +55,11 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
         <Link href="/lessons" className="text-sm text-muted-foreground hover:text-foreground">← Dersler</Link>
       </div>
       <PageHeader
-        eyebrow={fmtDate(lesson.startsAt)}
+        eyebrow={isAdmin ? `${fmtDate(lesson.startsAt)} · ${lesson.teacher.name}` : fmtDate(lesson.startsAt)}
         title={lesson.title}
         actions={
           <>
-            {joinable && <JoinButton lessonId={lesson.id} isTeacher={isTeacher} live={lesson.status === "LIVE"} size="lg" />}
+            {joinable && <JoinButton lessonId={lesson.id} isTeacher={isStaff} live={lesson.status === "LIVE"} size="lg" />}
             {isTeacher && lesson.status !== "ENDED" && (
               <Link href={`/lessons/${lesson.id}/edit`} className={buttonVariants({ variant: "outline", size: "lg" })}>
                 <PencilIcon /> Düzenle
@@ -109,7 +112,7 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
               students={lesson.students.map((s) => ({ id: s.student.id, name: s.student.name }))}
               plannedMin={lesson.durationMin}
               viewerId={user.id}
-              isTeacher={isTeacher}
+              isTeacher={isStaff}
             />
           )}
 
@@ -151,7 +154,7 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
                 <div className="min-w-0 leading-tight">
                   <div className="truncate text-sm font-medium">{student.name}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {joinedAt ? `Katıldı · ${fmtTime(joinedAt)}` : isTeacher ? student.email : ""}
+                    {joinedAt ? `Katıldı · ${fmtTime(joinedAt)}` : isStaff ? student.email : ""}
                   </div>
                 </div>
               </li>

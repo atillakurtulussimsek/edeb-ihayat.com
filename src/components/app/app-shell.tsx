@@ -13,7 +13,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
           <div className="leading-tight">
             <div className="font-heading text-lg">Edebi Hayat</div>
             <div className="text-[11px] tracking-wide text-muted-foreground uppercase">
-              {user.role === "TEACHER" ? "Öğretmen paneli" : "Öğrenci paneli"}
+              {user.role === "ADMIN" ? "Yönetici paneli" : user.role === "TEACHER" ? "Öğretmen paneli" : "Öğrenci paneli"}
             </div>
           </div>
         </div>

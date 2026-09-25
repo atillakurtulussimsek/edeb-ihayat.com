@@ -1,5 +1,5 @@
 import { VideoIcon, PlayIcon, AlertTriangleIcon } from "lucide-react";
-import { requireUser } from "@/auth";
+import { lessonScope, requireUser } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getRecordings, type Recording } from "@/lib/bbb";
 import { fmtDateTime } from "@/lib/format";
@@ -16,7 +16,7 @@ export default async function RecordingsPage() {
   const isTeacher = user.role === "TEACHER";
 
   const lessons = await prisma.lesson.findMany({
-    where: isTeacher ? { teacherId: user.id } : { students: { some: { studentId: user.id } } },
+    where: lessonScope(user),
     select: { id: true, meetingId: true, title: true, type: true },
   });
   const byMeeting = new Map(lessons.map((l) => [l.meetingId, l]));
@@ -25,7 +25,7 @@ export default async function RecordingsPage() {
   let error: string | null = null;
   if (lessons.length > 0) {
     try {
-      recordings = (await getRecordings(isTeacher ? undefined : lessons.map((l) => l.meetingId)))
+      recordings = (await getRecordings(user.role === "STUDENT" ? lessons.map((l) => l.meetingId) : undefined))
         .filter((r) => byMeeting.has(r.meetingId))
         .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
     } catch (e) {

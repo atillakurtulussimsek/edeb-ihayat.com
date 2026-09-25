@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ClockIcon, UsersIcon } from "lucide-react";
-import type { Lesson, LessonStudent, User } from "@/generated/prisma/client";
+import type { Lesson, LessonStudent, Role, User } from "@/generated/prisma/client";
 import { fmtDayLabel, fmtTime } from "@/lib/format";
 import { JoinButton } from "./join-button";
 import { StatusBadge, TypeBadge } from "./status-badge";
@@ -8,8 +8,20 @@ import { cn } from "@/lib/utils";
 
 export type LessonWithStudents = Lesson & { students: (LessonStudent & { student: Pick<User, "id" | "name"> })[] };
 
-export function LessonCard({ lesson, isTeacher, className }: { lesson: LessonWithStudents; isTeacher: boolean; className?: string }) {
-  const joinable = lesson.status === "SCHEDULED" || lesson.status === "LIVE";
+export function LessonCard({
+  lesson,
+  isTeacher,
+  viewerRole,
+  teacherName,
+  className,
+}: {
+  lesson: LessonWithStudents;
+  isTeacher: boolean;
+  viewerRole?: Role;
+  teacherName?: string;
+  className?: string;
+}) {
+  const joinable = viewerRole === "ADMIN" ? lesson.status === "LIVE" : lesson.status === "SCHEDULED" || lesson.status === "LIVE";
   const names = lesson.students.map((s) => s.student.name);
   return (
     <article
@@ -21,7 +33,10 @@ export function LessonCard({ lesson, isTeacher, className }: { lesson: LessonWit
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{fmtDayLabel(lesson.startsAt)}</p>
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {fmtDayLabel(lesson.startsAt)}
+            {teacherName && <span className="normal-case tracking-normal"> · {teacherName}</span>}
+          </p>
           <h3 className="mt-1 truncate font-heading text-xl leading-tight">
             <Link href={`/lessons/${lesson.id}`} className="after:absolute after:inset-0 hover:text-brand">
               {lesson.title}
@@ -46,7 +61,7 @@ export function LessonCard({ lesson, isTeacher, className }: { lesson: LessonWit
         <TypeBadge type={lesson.type} />
         {joinable && (
           <div className="relative z-10">
-            <JoinButton lessonId={lesson.id} isTeacher={isTeacher} live={lesson.status === "LIVE"} size="sm" />
+            <JoinButton lessonId={lesson.id} isTeacher={isTeacher || viewerRole === "ADMIN"} live={lesson.status === "LIVE"} size="sm" />
           </div>
         )}
       </div>

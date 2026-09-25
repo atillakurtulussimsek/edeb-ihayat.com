@@ -27,5 +27,6 @@ npm run dev
 
 - **Öğretmen**: öğrenci ekler, bireysel/grup ders planlar, dersi başlatır (BBB odası otomatik açılır), sonlandırır, kayıtları görür.
 - **Kayıt**: tüm dersler zorunlu olarak kaydedilir (`autoStartRecording=true`, durdurulamaz). KVKK sorumluluğu platform sahibine aittir.
+- **Yönetici (ADMIN)**: tüm öğretmenlerin derslerini, öğrencilerini, kayıtlarını ve istatistiklerini görür; canlı derse moderatör olarak girebilir; öğretmen↔yönetici rolü atar. İlk yönetici: `npm run make-admin -- eposta@ornek.com`.
 - **Çoklu öğretmen**: her öğretmen yalnız kendi öğrencilerini ve derslerini görür; mevcut öğretmenler `/teachers` sayfasından yeni öğretmen ekleyebilir.
 - **Öğrenci**: kendi derslerini görür, öğretmen odayı açınca tek tıkla katılır, kayıtları izler.

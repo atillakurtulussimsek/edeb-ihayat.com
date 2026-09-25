@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { addDays, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { CalendarDaysIcon, PlusIcon, UsersIcon, VideoIcon, ClockIcon } from "lucide-react";
-import { requireUser } from "@/auth";
+import { lessonScope, requireUser } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { syncLessonStatuses } from "@/lib/lesson-sync";
 import { AutoRefresh } from "@/components/app/auto-refresh";
@@ -19,10 +19,11 @@ const lessonInclude = { students: { include: { student: { select: { id: true, na
 export default async function DashboardPage() {
   const user = await requireUser();
   const isTeacher = user.role === "TEACHER";
+  const isStaff = user.role !== "STUDENT";
   await syncLessonStatuses();
   const now = new Date();
   const today = startOfDay(now);
-  const studentFilter = isTeacher ? { teacherId: user.id } : { students: { some: { studentId: user.id } } };
+  const studentFilter = lessonScope(user);
 
   const [live, upcoming, weekCount, studentCount, endedCount] = await Promise.all([
     prisma.lesson.findMany({ where: { ...studentFilter, status: "LIVE" }, include: lessonInclude, orderBy: { startsAt: "asc" } }),
@@ -35,7 +36,7 @@ export default async function DashboardPage() {
     prisma.lesson.count({
       where: { ...studentFilter, status: { in: ["SCHEDULED", "LIVE"] }, startsAt: { gte: startOfWeek(now, { weekStartsOn: 1 }), lte: endOfWeek(now, { weekStartsOn: 1 }) } },
     }),
-    isTeacher ? prisma.user.count({ where: { role: "STUDENT", active: true, teacherId: user.id } }) : Promise.resolve(0),
+    isStaff ? prisma.user.count({ where: { role: "STUDENT", active: true, ...(isTeacher ? { teacherId: user.id } : {}) } }) : Promise.resolve(0),
     prisma.lesson.count({ where: { ...studentFilter, status: "ENDED" } }),
   ]);
 
@@ -49,7 +50,13 @@ export default async function DashboardPage() {
       <PageHeader
         eyebrow={fmtDate(now)}
         title={`Merhaba, ${firstName}`}
-        description={isTeacher ? "Bugünkü derslerinizi başlatın, takviminizi yönetin." : "Yaklaşan derslerinizi buradan takip edin."}
+        description={
+          user.role === "ADMIN"
+            ? "Tüm öğretmenlerin derslerini buradan izleyebilirsiniz."
+            : isTeacher
+              ? "Bugünkü derslerinizi başlatın, takviminizi yönetin."
+              : "Yaklaşan derslerinizi buradan takip edin."
+        }
         actions={
           isTeacher && (
             <Link href="/lessons/new" className={buttonVariants({ size: "lg", className: "bg-brand text-brand-foreground hover:bg-brand/90" })}>
@@ -61,7 +68,7 @@ export default async function DashboardPage() {
 
       <section className="mb-8 grid gap-3 sm:grid-cols-3">
         <Stat icon={CalendarDaysIcon} label="Bu hafta" value={weekCount} hint="planlı ders" />
-        {isTeacher ? (
+        {isStaff ? (
           <Stat icon={UsersIcon} label="Aktif öğrenci" value={studentCount} hint="kayıtlı" />
         ) : (
           <Stat icon={ClockIcon} label="Canlı şu an" value={live.length} hint="ders" />
@@ -72,7 +79,7 @@ export default async function DashboardPage() {
       {live.length > 0 && (
         <Section title="Şu an canlı" accent>
           <div className="grid gap-4 md:grid-cols-2">
-            {live.map((l) => <LessonCard key={l.id} lesson={l} isTeacher={isTeacher} />)}
+            {live.map((l) => <LessonCard key={l.id} lesson={l} isTeacher={isTeacher} viewerRole={user.role} />)}
           </div>
         </Section>
       )}
@@ -80,13 +87,13 @@ export default async function DashboardPage() {
       <Section title="Bugün">
         {todays.length ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {todays.map((l) => <LessonCard key={l.id} lesson={l} isTeacher={isTeacher} />)}
+            {todays.map((l) => <LessonCard key={l.id} lesson={l} isTeacher={isTeacher} viewerRole={user.role} />)}
           </div>
         ) : (
           <EmptyState
             icon={CalendarDaysIcon}
             title="Bugün için planlı ders yok"
-            description={isTeacher ? "Yeni bir ders planlayarak öğrencilerinizi davet edin." : "Öğretmeniniz ders planladığında burada görünür."}
+            description={isTeacher ? "Yeni bir ders planlayarak öğrencilerinizi davet edin." : user.role === "ADMIN" ? "Öğretmenler ders planladığında burada görünür." : "Öğretmeniniz ders planladığında burada görünür."}
             action={isTeacher && <Link href="/lessons/new" className={buttonVariants({ variant: "outline" })}>Ders planla</Link>}
           />
         )}
@@ -95,7 +102,7 @@ export default async function DashboardPage() {
       {later.length > 0 && (
         <Section title="Yaklaşan" link={{ href: "/lessons", label: "Tümünü gör" }}>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {later.map((l) => <LessonCard key={l.id} lesson={l} isTeacher={isTeacher} />)}
+            {later.map((l) => <LessonCard key={l.id} lesson={l} isTeacher={isTeacher} viewerRole={user.role} />)}
           </div>
         </Section>
       )}

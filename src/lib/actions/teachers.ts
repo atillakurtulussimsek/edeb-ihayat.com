@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireTeacher } from "@/auth";
+import { requireStaff, requireUser } from "@/auth";
 import type { ActionResult } from "./students";
 
 const teacherSchema = z.object({
@@ -15,7 +15,7 @@ const teacherSchema = z.object({
 });
 
 export async function createTeacher(formData: FormData): Promise<ActionResult> {
-  await requireTeacher();
+  await requireStaff();
   const parsed = teacherSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri." };
   const { name, email, phone, password } = parsed.data;
@@ -27,9 +27,10 @@ export async function createTeacher(formData: FormData): Promise<ActionResult> {
 }
 
 export async function toggleTeacherActive(id: string): Promise<ActionResult> {
-  const me = await requireTeacher();
+  const me = await requireStaff();
   if (me.id === id) return { ok: false, error: "Kendi hesabınızı pasife alamazsınız." };
-  const t = await prisma.user.findFirst({ where: { id, role: "TEACHER" } });
+  const t = await prisma.user.findFirst({ where: { id, role: { in: ["TEACHER", "ADMIN"] } } });
+  if (t?.role === "ADMIN" && me.role !== "ADMIN") return { ok: false, error: "Yönetici hesabını yalnız yönetici değiştirebilir." };
   if (!t) return { ok: false, error: "Öğretmen bulunamadı." };
   await prisma.user.update({ where: { id }, data: { active: !t.active } });
   revalidatePath("/teachers");
@@ -43,7 +44,7 @@ const profileSchema = z.object({
 });
 
 export async function updateMyProfile(formData: FormData): Promise<ActionResult> {
-  const me = await requireTeacher();
+  const me = await requireUser();
   const parsed = profileSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri." };
   const { name, phone, password } = parsed.data;
@@ -53,4 +54,16 @@ export async function updateMyProfile(formData: FormData): Promise<ActionResult>
   });
   revalidatePath("/teachers");
   return { ok: true, message: "Profil güncellendi." };
+}
+
+/** Yalnız yönetici: öğretmen ↔ yönetici rolü. */
+export async function setStaffRole(id: string, role: "TEACHER" | "ADMIN"): Promise<ActionResult> {
+  const me = await requireStaff();
+  if (me.role !== "ADMIN") return { ok: false, error: "Bu işlem için yönetici yetkisi gerekli." };
+  if (me.id === id) return { ok: false, error: "Kendi rolünüzü değiştiremezsiniz." };
+  const t = await prisma.user.findFirst({ where: { id, role: { in: ["TEACHER", "ADMIN"] } } });
+  if (!t) return { ok: false, error: "Kullanıcı bulunamadı." };
+  await prisma.user.update({ where: { id }, data: { role } });
+  revalidatePath("/teachers");
+  return { ok: true, message: role === "ADMIN" ? "Yönetici yapıldı." : "Öğretmen rolüne alındı." };
 }

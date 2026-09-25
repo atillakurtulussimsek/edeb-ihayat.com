@@ -61,8 +61,25 @@ export async function requireUser() {
   return session.user;
 }
 
+/** Yalnız öğretmen (ders/öğrenci oluşturma-düzenleme). */
 export async function requireTeacher() {
   const user = await requireUser();
   if (user.role !== "TEACHER") redirect("/dashboard");
   return user;
+}
+
+/** Öğretmen veya yönetici (görüntüleme, öğretmen yönetimi). */
+export async function requireStaff() {
+  const user = await requireUser();
+  if (user.role === "STUDENT") redirect("/dashboard");
+  return user;
+}
+
+export type SessionUser = { id: string; name: string; email: string; role: Role };
+
+/** Ders sorgularında rol bazlı kapsam: yönetici her şeyi, öğretmen kendini, öğrenci kayıtlı olduğu dersleri görür. */
+export function lessonScope(user: SessionUser) {
+  if (user.role === "ADMIN") return {};
+  if (user.role === "TEACHER") return { teacherId: user.id };
+  return { students: { some: { studentId: user.id } } };
 }

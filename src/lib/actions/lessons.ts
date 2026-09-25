@@ -145,6 +145,7 @@ export async function getJoinUrl(lessonId: string): Promise<{ url: string } | { 
   if (lesson.status === "CANCELLED") return { error: "Bu ders iptal edildi." };
   if (lesson.status === "ENDED") return { error: "Bu ders tamamlandı." };
 
+  const isAdmin = user.role === "ADMIN";
   const isTeacher = user.role === "TEACHER";
   if (isTeacher && lesson.teacherId !== user.id) return { error: "Bu ders size ait değil." };
   if (!isTeacher && !lesson.students.some((s) => s.studentId === user.id)) {
@@ -154,6 +155,7 @@ export async function getJoinUrl(lessonId: string): Promise<{ url: string } | { 
   try {
     const running = await isMeetingRunning(lesson.meetingId);
     if (!running) {
+      if (isAdmin) return { error: "Ders şu an canlı değil." };
       if (!isTeacher) return { error: "Ders henüz başlamadı. Öğretmen odayı açınca katılabilirsiniz." };
       await createMeeting({
         meetingId: lesson.meetingId,
@@ -178,7 +180,7 @@ export async function getJoinUrl(lessonId: string): Promise<{ url: string } | { 
     return { error: e instanceof Error ? e.message : "BBB sunucusuna ulaşılamadı." };
   }
 
-  if (!isTeacher) {
+  if (!isTeacher && !isAdmin) {
     await prisma.lessonStudent.update({
       where: { lessonId_studentId: { lessonId: lesson.id, studentId: user.id } },
       data: { joinedAt: new Date() },
@@ -189,9 +191,9 @@ export async function getJoinUrl(lessonId: string): Promise<{ url: string } | { 
     url: joinUrl({
       meetingId: lesson.meetingId,
       fullName: user.name,
-      password: isTeacher ? lesson.moderatorPw : lesson.attendeePw,
+      password: isTeacher || isAdmin ? lesson.moderatorPw : lesson.attendeePw,
       userId: user.id,
-      role: isTeacher ? "MODERATOR" : "VIEWER",
+      role: isTeacher || isAdmin ? "MODERATOR" : "VIEWER",
     }),
   };
 }

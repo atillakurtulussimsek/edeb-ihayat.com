@@ -18,6 +18,11 @@ async function main() {
     create: { email, name, passwordHash, role: "TEACHER" },
   });
   console.log(`Öğretmen hesabı hazır: ${email}`);
+
+  if (process.env.ADMIN_EMAIL) {
+    const r = await prisma.user.updateMany({ where: { email: process.env.ADMIN_EMAIL.toLowerCase() }, data: { role: "ADMIN" } });
+    console.log(r.count ? `Yönetici yapıldı: ${process.env.ADMIN_EMAIL}` : `Yönetici için hesap bulunamadı: ${process.env.ADMIN_EMAIL}`);
+  }
 }
 
 main()

@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 type Item = { href: string; label: string; icon: LucideIcon; roles: Role[] };
 
 const ITEMS: Item[] = [
-  { href: "/dashboard", label: "Panel", icon: LayoutDashboardIcon, roles: ["TEACHER", "STUDENT"] },
-  { href: "/lessons", label: "Dersler", icon: CalendarDaysIcon, roles: ["TEACHER", "STUDENT"] },
-  { href: "/students", label: "Öğrenciler", icon: UsersIcon, roles: ["TEACHER"] },
-  { href: "/recordings", label: "Kayıtlar", icon: VideoIcon, roles: ["TEACHER", "STUDENT"] },
-  { href: "/teachers", label: "Öğretmenler", icon: GraduationCapIcon, roles: ["TEACHER"] },
+  { href: "/dashboard", label: "Panel", icon: LayoutDashboardIcon, roles: ["ADMIN", "TEACHER", "STUDENT"] },
+  { href: "/lessons", label: "Dersler", icon: CalendarDaysIcon, roles: ["ADMIN", "TEACHER", "STUDENT"] },
+  { href: "/students", label: "Öğrenciler", icon: UsersIcon, roles: ["ADMIN", "TEACHER"] },
+  { href: "/recordings", label: "Kayıtlar", icon: VideoIcon, roles: ["ADMIN", "TEACHER", "STUDENT"] },
+  { href: "/teachers", label: "Öğretmenler", icon: GraduationCapIcon, roles: ["ADMIN", "TEACHER"] },
 ];
 
 function useItems(role: Role) {

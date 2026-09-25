@@ -1,5 +1,5 @@
 import { UsersIcon } from "lucide-react";
-import { requireTeacher } from "@/auth";
+import { requireStaff } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtDate } from "@/lib/format";
 import { PageHeader } from "@/components/app/page-header";
@@ -14,24 +14,30 @@ export const metadata = { title: "Öğrenciler" };
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
-  const teacher = await requireTeacher();
+  const me = await requireStaff();
+  const isAdmin = me.role === "ADMIN";
   const students = await prisma.user.findMany({
-    where: { role: "STUDENT", teacherId: teacher.id },
+    where: { role: "STUDENT", ...(isAdmin ? {} : { teacherId: me.id }) },
     orderBy: [{ active: "desc" }, { name: "asc" }],
-    include: { _count: { select: { lessons: true } } },
+    include: { _count: { select: { lessons: true } }, teacher: { select: { name: true } } },
   });
 
   return (
     <>
-      <PageHeader title="Öğrenciler" description="Öğrenci hesaplarını oluşturun, bilgilerini güncelleyin." actions={<StudentDialog />} />
+      <PageHeader
+        title="Öğrenciler"
+        description={isAdmin ? "Tüm öğretmenlerin öğrencileri." : "Öğrenci hesaplarını oluşturun, bilgilerini güncelleyin."}
+        actions={!isAdmin && <StudentDialog />}
+      />
       {students.length === 0 ? (
-        <EmptyState icon={UsersIcon} title="Henüz öğrenci yok" description="İlk öğrencinizi ekleyin; ardından ders planlayabilirsiniz." action={<StudentDialog />} />
+        <EmptyState icon={UsersIcon} title="Henüz öğrenci yok" description={isAdmin ? "Öğretmenler öğrenci ekledikçe burada görünür." : "İlk öğrencinizi ekleyin; ardından ders planlayabilirsiniz."} action={!isAdmin && <StudentDialog />} />
       ) : (
         <div className="paper-card overflow-hidden rounded-2xl ring-1 ring-foreground/8">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>Öğrenci</TableHead>
+                {isAdmin && <TableHead className="hidden sm:table-cell">Öğretmen</TableHead>}
                 <TableHead className="hidden sm:table-cell">Telefon</TableHead>
                 <TableHead className="hidden md:table-cell">Ders</TableHead>
                 <TableHead className="hidden md:table-cell">Kayıt</TableHead>
@@ -55,6 +61,7 @@ export default async function StudentsPage() {
                       </div>
                     </div>
                   </TableCell>
+                  {isAdmin && <TableCell className="hidden sm:table-cell">{s.teacher?.name ?? "—"}</TableCell>}
                   <TableCell className="hidden text-muted-foreground sm:table-cell">{s.phone ?? "—"}</TableCell>
                   <TableCell className="hidden md:table-cell">{s._count.lessons}</TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">{fmtDate(s.createdAt)}</TableCell>
@@ -62,7 +69,7 @@ export default async function StudentsPage() {
                     {s.active ? <Badge className="bg-live/15 text-live">Aktif</Badge> : <Badge variant="secondary">Pasif</Badge>}
                   </TableCell>
                   <TableCell>
-                    <StudentRowActions student={{ id: s.id, name: s.name, email: s.email, phone: s.phone, note: s.note, active: s.active }} />
+                    {!isAdmin && <StudentRowActions student={{ id: s.id, name: s.name, email: s.email, phone: s.phone, note: s.note, active: s.active }} />}
                   </TableCell>
                 </TableRow>
               ))}

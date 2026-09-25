@@ -10,9 +10,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const m = await prisma.lessonMaterial.findFirst({
     where:
-      user.role === "TEACHER"
-        ? { id, lesson: { teacherId: user.id } }
-        : { id, lesson: { students: { some: { studentId: user.id } } } },
+      user.role === "ADMIN"
+        ? { id }
+        : user.role === "TEACHER"
+          ? { id, lesson: { teacherId: user.id } }
+          : { id, lesson: { students: { some: { studentId: user.id } } } },
   });
   if (!m) return NextResponse.json({ error: "Bulunamadı." }, { status: 404 });
 
