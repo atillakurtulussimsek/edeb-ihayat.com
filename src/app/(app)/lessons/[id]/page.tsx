@@ -39,7 +39,7 @@ export default async function LessonDetailPage({ params, searchParams }: PagePro
   });
   if (!lesson) notFound();
   if (isTeacher && lesson.teacherId !== user.id) notFound();
-  if (!isTeacher && !lesson.students.some((s) => s.studentId === user.id)) notFound();
+  if (!isStaff && !lesson.students.some((s) => s.studentId === user.id)) notFound();
 
   const [info, recordings] = await Promise.all([
     lesson.status === "LIVE" ? getMeetingInfo(lesson.meetingId) : Promise.resolve(null),
